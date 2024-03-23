@@ -4,16 +4,17 @@ import net.runelite.client.config.Config;
 import net.runelite.client.config.ConfigGroup;
 import net.runelite.client.config.ConfigItem;
 
-@ConfigGroup("example")
+@ConfigGroup(ScamTradePreventionConfig.GROUP_NAME)
 public interface ScamTradePreventionConfig extends Config
 {
+	String GROUP_NAME = "ScamTradePrevention";
 	@ConfigItem(
-		keyName = "greeting",
-		name = "Welcome Greeting",
-		description = "The message to show to the user when they login"
+		keyName = "valueThreshold",
+		name = "Scam Value Threshold",
+		description = "A trade will be considered a scam if the value of the trade favors the other play by at least this amount"
 	)
-	default String greeting()
+	default int valueThreshold()
 	{
-		return "Hello";
+		return 100_000;
 	}
 }
