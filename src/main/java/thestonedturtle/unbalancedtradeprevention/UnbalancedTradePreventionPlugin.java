@@ -1,4 +1,4 @@
-package thestonedturtle.scamtradeprevention;
+package thestonedturtle.unbalancedtradeprevention;
 
 import com.google.inject.Provides;
 import java.text.NumberFormat;
@@ -29,9 +29,9 @@ import net.runelite.client.util.Text;
 
 @Slf4j
 @PluginDescriptor(
-	name = "Scam Trade Prevention"
+	name = "Unbalanced Trade Prevention"
 )
-public class ScamTradePreventionPlugin extends Plugin
+public class UnbalancedTradePreventionPlugin extends Plugin
 {
 	private static final int TRADE_WINDOW_SECOND_SCREEN_INTERFACE_ID = 334;
 	private static final int TRADE_WINDOW_SELF_VALUE_TEXT_CHILD_ID = 23;
@@ -45,15 +45,15 @@ public class ScamTradePreventionPlugin extends Plugin
 	private Client client;
 
 	@Inject
-	private ScamTradePreventionConfig config;
+	private UnbalancedTradePreventionConfig config;
 
 	@Provides
-	ScamTradePreventionConfig provideConfig(ConfigManager configManager)
+	UnbalancedTradePreventionConfig provideConfig(ConfigManager configManager)
 	{
-		return configManager.getConfig(ScamTradePreventionConfig.class);
+		return configManager.getConfig(UnbalancedTradePreventionConfig.class);
 	}
 
-	private boolean scamTradeDetected = false;
+	private boolean unbalancedTradeDetected = false;
 
 	@Override
 	protected void startUp()
@@ -71,7 +71,7 @@ public class ScamTradePreventionPlugin extends Plugin
 	@Override
 	protected void shutDown()
 	{
-		scamTradeDetected = false;
+		unbalancedTradeDetected = false;
 	}
 
 	private int parseWidgetForValue(Widget w, Pattern p)
@@ -128,7 +128,7 @@ public class ScamTradePreventionPlugin extends Plugin
 	private void checkTradeWindow()
 	{
 		int delta = getTradeWindowDelta();
-		scamTradeDetected = delta >= config.valueThreshold();
+		unbalancedTradeDetected = delta >= config.valueThreshold();
 	}
 
 	@Subscribe
@@ -147,14 +147,14 @@ public class ScamTradePreventionPlugin extends Plugin
 	{
 		if (event.getGroupId() == TRADE_WINDOW_SECOND_SCREEN_INTERFACE_ID)
 		{
-			scamTradeDetected = false;
+			unbalancedTradeDetected = false;
 		}
 	}
 
 	@Subscribe
 	public void onConfigChanged(ConfigChanged event)
 	{
-		if (!event.getGroup().equals(ScamTradePreventionConfig.GROUP_NAME))
+		if (!event.getGroup().equals(UnbalancedTradePreventionConfig.GROUP_NAME))
 		{
 			return;
 		}
@@ -166,7 +166,7 @@ public class ScamTradePreventionPlugin extends Plugin
 	public void onPostMenuSort(PostMenuSort postMenuSort)
 	{
 		// The menu is not rebuilt when it is open so no need to swap
-		if (!scamTradeDetected || client.isMenuOpen())
+		if (!unbalancedTradeDetected || client.isMenuOpen())
 		{
 			return;
 		}
