@@ -31,6 +31,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import javax.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
+import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
 import net.runelite.api.MenuEntry;
@@ -38,6 +39,7 @@ import net.runelite.api.events.PostMenuSort;
 import net.runelite.api.events.WidgetClosed;
 import net.runelite.api.events.WidgetLoaded;
 import net.runelite.api.widgets.Widget;
+import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
@@ -59,8 +61,13 @@ public class UnbalancedTradePreventionPlugin extends Plugin
 	private static final Pattern OPPONENT_VALUE_PATTERN = Pattern.compile("In return you will receive:\\(Value: ([\\d,]* coins|Lots!)\\)");
 	private static final NumberFormat VALUE_FORMAT = NumberFormat.getNumberInstance(java.util.Locale.UK);
 
+	private static final String UNBALANCED_TRADE_CHAT_MESSAGE = "<col=ff0000>Unbalanced trade detected! The accept trade option has been set to right-click only.</col>";
+
 	@Inject
 	private Client client;
+
+	@Inject
+	private ClientThread clientThread;
 
 	@Inject
 	private UnbalancedTradePreventionConfig config;
@@ -76,7 +83,8 @@ public class UnbalancedTradePreventionPlugin extends Plugin
 	@Override
 	protected void startUp()
 	{
-		if (!client.getGameState().equals(GameState.LOGGED_IN)) {
+		if (!client.getGameState().equals(GameState.LOGGED_IN))
+		{
 			return;
 		}
 
@@ -147,6 +155,21 @@ public class UnbalancedTradePreventionPlugin extends Plugin
 	{
 		int delta = getTradeWindowDelta();
 		unbalancedTradeDetected = delta >= config.valueThreshold();
+		if (unbalancedTradeDetected)
+		{
+			sendChatMessage();
+		}
+	}
+
+	private void sendChatMessage()
+	{
+		if (!client.isClientThread())
+		{
+			clientThread.invoke(this::sendChatMessage);
+			return;
+		}
+
+		client.addChatMessage(ChatMessageType.GAMEMESSAGE, "", UNBALANCED_TRADE_CHAT_MESSAGE, null);
 	}
 
 	@Subscribe
