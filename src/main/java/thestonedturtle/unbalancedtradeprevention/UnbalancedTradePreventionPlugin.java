@@ -88,10 +88,7 @@ public class UnbalancedTradePreventionPlugin extends Plugin
 			return;
 		}
 
-		if (client.getWidget(TRADE_WINDOW_SECOND_SCREEN_INTERFACE_ID, TRADE_WINDOW_SELF_VALUE_TEXT_CHILD_ID) != null)
-		{
-			checkTradeWindow();
-		}
+		checkTradeWindow();
 	}
 
 	@Override
@@ -153,6 +150,11 @@ public class UnbalancedTradePreventionPlugin extends Plugin
 
 	private void checkTradeWindow()
 	{
+		if (client.getWidget(TRADE_WINDOW_SECOND_SCREEN_INTERFACE_ID, TRADE_WINDOW_SELF_VALUE_TEXT_CHILD_ID) == null)
+		{
+			return;
+		}
+
 		int delta = getTradeWindowDelta();
 		unbalancedTradeDetected = delta >= config.valueThreshold();
 		if (unbalancedTradeDetected)
