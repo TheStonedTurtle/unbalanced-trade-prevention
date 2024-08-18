@@ -1,5 +1,5 @@
 # Unbalanced Trade Prevention [![Plugin Installs](http://img.shields.io/endpoint?url=https://api.runelite.net/pluginhub/shields/installs/plugin/unbalanced-trade-prevention)](https://runelite.net/plugin-hub/TheStonedTurtle) [![Plugin Rank](http://img.shields.io/endpoint?url=https://api.runelite.net/pluginhub/shields/rank/plugin/unbalanced-trade-prevention)](https://runelite.net/plugin-hub)
-Disables the left-click `Accept` option on the second trade window if the value of the trade is vastly in the other players favor. The exact amount can be controlled via the plugin config options.
+Disables the left-click `Accept` option on the second trade window if the value of the trade is in the other players favor. The exact amount for what determines being in the other players favor can be controlled via the plugin config options.
 
 # Limitations
 * Item prices are based off the GE price as displayed in-game via the Price Checker UI.
