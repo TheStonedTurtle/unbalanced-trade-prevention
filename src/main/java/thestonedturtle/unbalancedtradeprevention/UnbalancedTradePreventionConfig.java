@@ -32,13 +32,44 @@ import net.runelite.client.config.ConfigItem;
 public interface UnbalancedTradePreventionConfig extends Config
 {
 	String GROUP_NAME = "UnbalancedTradePrevention";
+
 	@ConfigItem(
 		keyName = "valueThreshold",
 		name = "Trade Value Threshold",
-		description = "A trade will be considered unbalanced if the value of the trade favors the other play by at least this amount"
+		description = "A trade will be considered unbalanced if the value of the trade favors the other play by at least this amount",
+		position = 0
 	)
 	default int valueThreshold()
 	{
 		return 100_000;
+	}
+
+	@ConfigItem(
+		keyName = "filterType",
+		name = "Item Filter Method",
+		description = "<html>Controls how the list of items should be treated<br/>" +
+			"<br/>Off: No item filtering" +
+			"<br/>Whitelist: If the other player's trade contains any item NOT in the list it will be considered unbalanced (excluding coins/plat tokens)" +
+			"<br/>Blacklist: If any of the listed items are in the other player's trade then it will be considered it unbalanced" +
+			"</html>",
+		position = 1
+	)
+	default ItemFilterType filterType()
+	{
+		return ItemFilterType.WHITELIST;
+	}
+
+	@ConfigItem(
+		keyName = "itemList",
+		name = "Item List",
+		description = "<html>The list of items that are used for the `Item Filter Method` config option.<br/>" +
+			"<br/>Format: (item), (item)" +
+			"<br/>Supports wildcards: (item*)/(*item) only, (it*em) does not work." +
+			"</html>",
+		position = 2
+	)
+	default String itemList()
+	{
+		return "";
 	}
 }
