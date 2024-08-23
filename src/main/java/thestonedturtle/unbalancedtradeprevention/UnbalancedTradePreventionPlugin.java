@@ -162,7 +162,7 @@ public class UnbalancedTradePreventionPlugin extends Plugin
 		return selfValue - opponentValue;
 	}
 
-	private List<String> getOpponentItemNames()
+	private Set<String> getOpponentItemNames()
 	{
 		final Widget opponentItemContainer = client.getWidget(TRADE_WINDOW_SECOND_SCREEN_INTERFACE_ID, TRADE_WINDOW_OPPONENT_ITEMS_CHILD_ID);
 		if (opponentItemContainer == null)
@@ -170,18 +170,18 @@ public class UnbalancedTradePreventionPlugin extends Plugin
 			return null;
 		}
 
-		final List<String> list = new ArrayList<>();
+		final Set<String> set = new HashSet<>();
 		for (final Widget itemWidget : opponentItemContainer.getDynamicChildren())
 		{
 			// If there are multiple of the same item then there will be a white `x`
 			// This seems to be the only time there will be a color tag inside these widgets
 			final String name = itemWidget.getText().split("<col")[0].trim().toLowerCase();
-			list.add(name);
+			set.add(name);
 
 			// TODO: Allow setting/removing items from whitelist/blacklist from trade interface?
 		}
 
-		return list;
+		return set;
 	}
 
 	private void checkTradeWindow()
@@ -193,7 +193,7 @@ public class UnbalancedTradePreventionPlugin extends Plugin
 
 		if (!ItemFilterType.OFF.equals(config.filterType()))
 		{
-			final List<String> itemNames = getOpponentItemNames();
+			final Set<String> itemNames = getOpponentItemNames();
 			// If there was some issue getting their items return false;
 			if (itemNames == null)
 			{
@@ -202,59 +202,66 @@ public class UnbalancedTradePreventionPlugin extends Plugin
 				return;
 			}
 
+			final Collection<String> matchingNames = itemNames.stream()
+				.filter(filterItemNames::contains)
+				.collect(Collectors.toList());
+
 			final boolean isBlacklist = ItemFilterType.BLACKLIST.equals(config.filterType());
-
-			// Returns true if BLACKLIST and any match or WHITELIST and any do not match
-			final boolean filterUnbalancedMatch = isBlacklist
-				? itemNames.stream().anyMatch(filterItemNames::contains)
-				: !filterItemNames.containsAll(itemNames);
-
-			if (filterUnbalancedMatch)
+			if (isBlacklist && !matchingNames.isEmpty())
 			{
 				unbalancedTradeDetected = true;
 				sendChatMessage(true);
 				return;
 			}
 
-			// Check wildcards last
-			// Returns true if BLACKLIST and any match or WHITELIST and any do not match
-			final boolean wildcardUnbalancedMatch = filterWildcardNames.stream()
-				.anyMatch(wildcard ->
+			// If we're whitelisting we may have matched some directly but not all
+			// The rest could be matched via wildcards
+			matchingNames.forEach(itemNames::remove);
+
+			// Check each wildcard filter
+			for (final String wildcard : filterWildcardNames)
+			{
+				final String[] split = wildcard.split("\\*");
+				final boolean startsWithWildcard = wildcard.startsWith("*");
+				final String searchTerm;
+				// If it starts with the wildcard we're looking for strings that end with this value
+				if (startsWithWildcard && split.length > 1)
 				{
-					final String[] split = wildcard.split("\\*");
+					// Do not trim the actual search term as we may want to match stuff with a leading space
+					searchTerm = split[1];
+				}
+				else
+				{
+					searchTerm = split[0];
+				}
 
-					// If it starts with the wildcard we're looking for strings that end with this value
-					if (wildcard.startsWith("*") && split.length > 1)
-					{
-						// Do not trim the actual search term as we may want to match stuff with a leading space
-						final String searchTerm = split[1];
-						if (searchTerm.trim().isEmpty())
-						{
-							return false;
-						}
+				if (searchTerm.trim().isEmpty())
+				{
+					continue;
+				}
 
-						// ItemFilterType.BLACKLIST = If any match
-						// ItemFilterType.WHITELIST = If any do not match
-						return isBlacklist
-							? itemNames.stream().anyMatch(s -> s.endsWith(searchTerm))
-							: !itemNames.stream().allMatch(s -> s.endsWith(searchTerm));
-					}
+				final Collection<String> wildcardMatchingNames = itemNames.stream()
+					.filter(s -> startsWithWildcard ? s.endsWith(searchTerm) : s.startsWith(searchTerm))
+					.collect(Collectors.toList());
 
-					// Do not trim the actual search term as we may want to match stuff with a trailing space
-					final String searchTerm = split[0];
-					if (searchTerm.trim().isEmpty())
-					{
-						return false;
-					}
+				// If it matches and we're blacklisting return early
+				if (isBlacklist && !wildcardMatchingNames.isEmpty())
+				{
+					unbalancedTradeDetected = true;
+					sendChatMessage(true);
+					return;
+				}
 
-					// ItemFilterType.BLACKLIST = If any match
-					// ItemFilterType.WHITELIST = If any do not match
-					return isBlacklist
-						? itemNames.stream().anyMatch(s -> s.startsWith(searchTerm))
-						: !itemNames.stream().allMatch(s -> s.startsWith(searchTerm));
-				});
+				wildcardMatchingNames.forEach(itemNames::remove);
+				if (itemNames.isEmpty())
+				{
+					break;
+				}
+			}
 
-			if (wildcardUnbalancedMatch)
+
+			// If we weren't able to match any name and we're whitelisting
+			if (!isBlacklist && !itemNames.isEmpty())
 			{
 				unbalancedTradeDetected = true;
 				sendChatMessage(true);
