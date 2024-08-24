@@ -72,7 +72,29 @@ public class UnbalancedTradeTest
 			// Value should be positive if you're giving away money and negative if you're receiving money
 			Arguments.of("100 coins", "0 coins", 100),
 			Arguments.of("0 coins", "100 coins", -100),
-			Arguments.of("100 coins", "100 coins", 0)
+			Arguments.of("100 coins", "100 coins", 0),
+			// If any value is null then the trade should be as unfavorable as possible
+			Arguments.of("100 coins", null, Integer.MAX_VALUE),
+			Arguments.of(null, "100 coins", Integer.MAX_VALUE),
+			Arguments.of(null, null, Integer.MAX_VALUE),
+			// If the user's value is `Lots` the trade should be as unfavorable as possible
+			Arguments.of("Lots!", "Lots!", Integer.MAX_VALUE),
+			Arguments.of("Lots!", "100 coins", Integer.MAX_VALUE),
+			// If either value doesn't match the pattern then trade should be as unfavorable as possible
+			Arguments.of("DOES NOT MATCH", "DOES NOT MATCH", Integer.MAX_VALUE),
+			Arguments.of("DOES NOT MATCH", "0 coins", Integer.MAX_VALUE),
+			Arguments.of("0 coins", "DOES NOT MATCH", Integer.MAX_VALUE),
+			// If the opponents value is lots their value should be set to max value
+			Arguments.of("0 coins", "Lots!", Integer.MAX_VALUE * -1),
+			Arguments.of("100 coins", "Lots!", (100 - Integer.MAX_VALUE)),
+			// Ensure values with commas work as expected
+			Arguments.of("100,000 coins", "0 coins", 100_000),
+			Arguments.of("100,000,000 coins", "0 coins", 100_000_000),
+			Arguments.of("1,000,000,000 coins", "0 coins", 1_000_000_000),
+			Arguments.of("0 coins", "100,000 coins", -100_000),
+			Arguments.of("0 coins", "100,000,000 coins", -100_000_000),
+			Arguments.of("0 coins", "1,000,000,000 coins", -1_000_000_000),
+			Arguments.of("100,000 coins", "200,000 coins", -100_000)
 		);
 	}
 
