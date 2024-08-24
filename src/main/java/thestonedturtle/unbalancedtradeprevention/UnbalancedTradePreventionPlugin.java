@@ -24,6 +24,7 @@
  */
 package thestonedturtle.unbalancedtradeprevention;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.inject.Provides;
 import java.text.NumberFormat;
 import java.text.ParseException;
@@ -61,10 +62,13 @@ import net.runelite.client.util.Text;
 )
 public class UnbalancedTradePreventionPlugin extends Plugin
 {
-	private static final int TRADE_WINDOW_SECOND_SCREEN_INTERFACE_ID = 334;
-	private static final int TRADE_WINDOW_SELF_VALUE_TEXT_CHILD_ID = 23;
-	private static final int TRADE_WINDOW_OPPONENT_VALUE_TEXT_CHILD_ID = 24;
 	private static final int TRADE_WINDOW_OPPONENT_ITEMS_CHILD_ID = 29;
+	@VisibleForTesting
+	public static final int TRADE_WINDOW_SECOND_SCREEN_INTERFACE_ID = 334;
+	@VisibleForTesting
+	static final int TRADE_WINDOW_SELF_VALUE_TEXT_CHILD_ID = 23;
+	@VisibleForTesting
+	static final int TRADE_WINDOW_OPPONENT_VALUE_TEXT_CHILD_ID = 24;
 
 	private static final Pattern SELF_VALUE_PATTERN = Pattern.compile("You are about to give:\\(Value: ([\\d,]* coins|Lots!)\\)");
 	private static final Pattern OPPONENT_VALUE_PATTERN = Pattern.compile("In return you will receive:\\(Value: ([\\d,]* coins|Lots!)\\)");
@@ -110,9 +114,9 @@ public class UnbalancedTradePreventionPlugin extends Plugin
 		unbalancedTradeDetected = false;
 	}
 
-	private int parseWidgetForValue(Widget w, Pattern p)
+	private int parseStringForValue(String text, Pattern p)
 	{
-		Matcher m = p.matcher(Text.removeTags(w.getText()));
+		Matcher m = p.matcher(Text.removeTags(text));
 		if (!m.matches())
 		{
 			return -1;
@@ -136,22 +140,34 @@ public class UnbalancedTradePreventionPlugin extends Plugin
 		}
 	}
 
+	String getTextByWidget(int groupId, int childId)
+	{
+		Widget w = client.getWidget(groupId, childId);
+		if (w == null)
+		{
+			return null;
+		}
+
+		return w.getText();
+	}
+
 	/**
 	 * Calculates the difference between your trade value and your opponents trade value
 	 *
 	 * @return the difference between your trades. Returns `Integer.MAX_VALUE` if it can not find the values or if your value is `Lots!`
 	 */
-	private int getTradeWindowDelta()
+	@VisibleForTesting
+	int getTradeWindowDelta()
 	{
-		Widget selfValueWidget = client.getWidget(TRADE_WINDOW_SECOND_SCREEN_INTERFACE_ID, TRADE_WINDOW_SELF_VALUE_TEXT_CHILD_ID);
-		Widget opponentValueWidget = client.getWidget(TRADE_WINDOW_SECOND_SCREEN_INTERFACE_ID, TRADE_WINDOW_OPPONENT_VALUE_TEXT_CHILD_ID);
-		if (selfValueWidget == null || opponentValueWidget == null)
+		String selfValueText = getTextByWidget(TRADE_WINDOW_SECOND_SCREEN_INTERFACE_ID, TRADE_WINDOW_SELF_VALUE_TEXT_CHILD_ID);
+		String opponentValueText = getTextByWidget(TRADE_WINDOW_SECOND_SCREEN_INTERFACE_ID, TRADE_WINDOW_OPPONENT_VALUE_TEXT_CHILD_ID);
+		if (selfValueText == null || opponentValueText == null)
 		{
 			return Integer.MAX_VALUE;
 		}
 
-		int selfValue = parseWidgetForValue(selfValueWidget, SELF_VALUE_PATTERN);
-		int opponentValue = parseWidgetForValue(opponentValueWidget, OPPONENT_VALUE_PATTERN);
+		int selfValue = parseStringForValue(selfValueText, SELF_VALUE_PATTERN);
+		int opponentValue = parseStringForValue(opponentValueText, OPPONENT_VALUE_PATTERN);
 
 		// If there was an error getting our own value, or it equals "Lots!" (or max cash), assume the trade is in their favor
 		if (selfValue == -1 || selfValue == Integer.MAX_VALUE)
