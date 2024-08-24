@@ -170,7 +170,8 @@ public class UnbalancedTradePreventionPlugin extends Plugin
 		int opponentValue = parseStringForValue(opponentValueText, OPPONENT_VALUE_PATTERN);
 
 		// If there was an error getting our own value, or it equals "Lots!" (or max cash), assume the trade is in their favor
-		if (selfValue == -1 || selfValue == Integer.MAX_VALUE)
+		// If there was an error getting the opponents value also assume it's in their favor
+		if (selfValue == -1 || selfValue == Integer.MAX_VALUE || opponentValue == -1)
 		{
 			return Integer.MAX_VALUE;
 		}
