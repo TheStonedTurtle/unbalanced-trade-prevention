@@ -209,7 +209,22 @@ public class UnbalancedTradeTest
 			// neither matches
 			Arguments.of(ItemFilterType.BLACKLIST, Set.of("Swordfish"), Set.of("Item *"), Sets.newHashSet("Lobster"), false),
 			Arguments.of(ItemFilterType.BLACKLIST, Set.of("Swordfish"), Set.of("* Item"), Sets.newHashSet("Lobster"), false),
-			Arguments.of(ItemFilterType.BLACKLIST, Set.of("Swordfish"), Set.of("Item *"), EMPTY, false)
+			Arguments.of(ItemFilterType.BLACKLIST, Set.of("Swordfish"), Set.of("Item *"), EMPTY, false),
+
+			// If there was an error getting the opponents items return true if we're meant to filter by them
+			Arguments.of(ItemFilterType.OFF, EMPTY, EMPTY, null, false),
+			Arguments.of(ItemFilterType.WHITELIST, EMPTY, EMPTY, null, true),
+			Arguments.of(ItemFilterType.BLACKLIST, EMPTY, EMPTY, null, true),
+
+			// Ignore strings that are just spaces
+			Arguments.of(ItemFilterType.WHITELIST, Set.of(" ", "      "), EMPTY, EMPTY, false),
+			Arguments.of(ItemFilterType.WHITELIST, Set.of(" ", "      "), EMPTY, Sets.newHashSet("Some Item"), true),
+			Arguments.of(ItemFilterType.WHITELIST, EMPTY, Set.of(" ", "      "), EMPTY, false),
+			Arguments.of(ItemFilterType.WHITELIST, EMPTY, Set.of(" ", "      "), Sets.newHashSet("Some Item"), true),
+			Arguments.of(ItemFilterType.BLACKLIST, Set.of(" ", "      "), EMPTY, EMPTY, false),
+			Arguments.of(ItemFilterType.BLACKLIST, Set.of(" ", "      "), EMPTY, Sets.newHashSet("Some Item"), false),
+			Arguments.of(ItemFilterType.BLACKLIST, EMPTY, Set.of(" ", "      "), EMPTY, false),
+			Arguments.of(ItemFilterType.BLACKLIST, EMPTY, Set.of(" ", "      "), Sets.newHashSet("Some Item"), false)
 		);
 	}
 
