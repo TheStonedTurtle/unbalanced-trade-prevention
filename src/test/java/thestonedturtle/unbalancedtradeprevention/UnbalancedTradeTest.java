@@ -119,10 +119,11 @@ public class UnbalancedTradeTest
 	public static Stream<Arguments> providerForItemFilters()
 	{
 		final Set<String> EMPTY = new HashSet<>();
+		// false = Balanced trade
+		// true = Unbalanced trade
 		// Only the opponentItems set needs to be mutable, so use Sets.newHashSet instead
 		return Stream.of(
-			// TODO: Add wildcard tests
-			// If the item filter is off then it should always return false
+			// If the item filter is off then it should always be balanced
 			Arguments.of(ItemFilterType.OFF, EMPTY, EMPTY, EMPTY, false),
 			Arguments.of(ItemFilterType.OFF, Set.of("ITEM NAME"), EMPTY, EMPTY, false),
 			Arguments.of(ItemFilterType.OFF, EMPTY, EMPTY, Set.of("ITEM NAME"), false),
@@ -133,6 +134,7 @@ public class UnbalancedTradeTest
 			Arguments.of(ItemFilterType.WHITELIST, Set.of("ITEM NAME"), EMPTY, EMPTY, false),
 			Arguments.of(ItemFilterType.WHITELIST, EMPTY, EMPTY, Sets.newHashSet("ITEM NAME"), true),
 			Arguments.of(ItemFilterType.WHITELIST, Set.of("ITEM NAME"), EMPTY, Sets.newHashSet("ITEM NAME"), false),
+			Arguments.of(ItemFilterType.WHITELIST, Set.of("OTHER ITEM"), EMPTY, Sets.newHashSet("ITEM NAME"), true),
 			Arguments.of(ItemFilterType.WHITELIST, Set.of("ITEM NAME", "OTHER ITEM"), EMPTY, Sets.newHashSet("ITEM NAME"), false),
 			// BLACKLIST - unbalanced if there's any item in the opponents trade that IS specified in one of our lists
 			Arguments.of(ItemFilterType.BLACKLIST, EMPTY, EMPTY, EMPTY, false),
@@ -140,13 +142,74 @@ public class UnbalancedTradeTest
 			Arguments.of(ItemFilterType.BLACKLIST, EMPTY, EMPTY, Sets.newHashSet("ITEM NAME"), false),
 			Arguments.of(ItemFilterType.BLACKLIST, Set.of("ITEM NAME"), EMPTY, Sets.newHashSet("ITEM NAME"), true),
 			Arguments.of(ItemFilterType.BLACKLIST, Set.of("OTHER ITEM"), EMPTY, Sets.newHashSet("ITEM NAME"), false),
+			Arguments.of(ItemFilterType.BLACKLIST, Set.of("ITEM NAME", "OTHER ITEM"), EMPTY, Sets.newHashSet("ITEM NAME"), true),
 			// Coins and Platinum Tokens should always be allowed regardless of the settings
 			Arguments.of(ItemFilterType.OFF, EMPTY, EMPTY, Sets.newHashSet("Coins", "Platinum token"), false),
 			Arguments.of(ItemFilterType.WHITELIST, EMPTY, EMPTY, Sets.newHashSet("Coins", "Platinum token"), false),
 			Arguments.of(ItemFilterType.BLACKLIST, EMPTY, EMPTY, Sets.newHashSet("Coins", "Platinum token"), false),
 			// Even if the blacklist contains them they should still be allowed
 			Arguments.of(ItemFilterType.BLACKLIST, Set.of("Coins"), EMPTY, Sets.newHashSet("Coins", "Platinum token"), false),
-			Arguments.of(ItemFilterType.BLACKLIST, Set.of("Platinum token"), EMPTY, Sets.newHashSet("Coins", "Platinum token"), false)
+			Arguments.of(ItemFilterType.BLACKLIST, Set.of("Platinum token"), EMPTY, Sets.newHashSet("Coins", "Platinum token"), false),
+
+			// Wildcards
+			// trailing wildcard
+			Arguments.of(ItemFilterType.WHITELIST, EMPTY, Set.of("Item *"), Sets.newHashSet("Item name"), false),
+			Arguments.of(ItemFilterType.WHITELIST, EMPTY, Set.of("Item *"), Sets.newHashSet("Item name", "Item with another name"), false), // Matches multiple values
+			Arguments.of(ItemFilterType.WHITELIST, EMPTY, Set.of("Item *"), Sets.newHashSet("Item "), false),
+			Arguments.of(ItemFilterType.WHITELIST, EMPTY, Set.of("Item *"), Sets.newHashSet("Item"), true), // missing space so shouldn't match
+			Arguments.of(ItemFilterType.WHITELIST, EMPTY, Set.of("Item *"), Sets.newHashSet("Item Name", "Item"), true), // one matches one doesn't
+			Arguments.of(ItemFilterType.BLACKLIST, EMPTY, Set.of("Item *"), Sets.newHashSet("Item name"), true),
+			Arguments.of(ItemFilterType.BLACKLIST, EMPTY, Set.of("Item *"), Sets.newHashSet("Item "), true),
+			Arguments.of(ItemFilterType.BLACKLIST, EMPTY, Set.of("Item *"), Sets.newHashSet("Item"), false), // missing space so shouldn't match
+			Arguments.of(ItemFilterType.BLACKLIST, EMPTY, Set.of("Item *"), Sets.newHashSet("Item Name", "Item"), true), // one matches one doesn't
+			// leading wildcard
+			Arguments.of(ItemFilterType.WHITELIST, EMPTY, Set.of("* Item"), Sets.newHashSet("Named Item"), false),
+			Arguments.of(ItemFilterType.WHITELIST, EMPTY, Set.of("* Item"), Sets.newHashSet("Named Item", "Other Named Item"), false), // Matches multiple values
+			Arguments.of(ItemFilterType.WHITELIST, EMPTY, Set.of("* Item"), Sets.newHashSet(" Item"), false),
+			Arguments.of(ItemFilterType.WHITELIST, EMPTY, Set.of("* Item"), Sets.newHashSet("Item"), true), // missing space so shouldn't match
+			Arguments.of(ItemFilterType.WHITELIST, EMPTY, Set.of("* Item"), Sets.newHashSet("Named Item", "Item"), true), // one matches one doesn't
+			Arguments.of(ItemFilterType.BLACKLIST, EMPTY, Set.of("* Item"), Sets.newHashSet("Named Item"), true),
+			Arguments.of(ItemFilterType.BLACKLIST, EMPTY, Set.of("* Item"), Sets.newHashSet(" Item"), true),
+			Arguments.of(ItemFilterType.BLACKLIST, EMPTY, Set.of("* Item"), Sets.newHashSet("Item"), false), // missing space so shouldn't match
+			Arguments.of(ItemFilterType.BLACKLIST, EMPTY, Set.of("* Item"), Sets.newHashSet("Named Item", "Item"), true), // one matches one doesn't
+
+			// Combination of Wildcards and non wildcards - WHITELIST
+			// non-wildcard matches
+			Arguments.of(ItemFilterType.WHITELIST, Set.of("Swordfish"), Set.of("Item *"), Sets.newHashSet("Swordfish"), false),
+			Arguments.of(ItemFilterType.WHITELIST, Set.of("Swordfish"), Set.of("Item *"), Sets.newHashSet("Swordfish", "Lobster"), true),
+			// wildcard matches
+			Arguments.of(ItemFilterType.WHITELIST, Set.of("Swordfish"), Set.of("Item *"), Sets.newHashSet("Item name"), false),
+			Arguments.of(ItemFilterType.WHITELIST, Set.of("Swordfish"), Set.of("Item *"), Sets.newHashSet("Item Name", "Lobster"), true),
+			Arguments.of(ItemFilterType.WHITELIST, Set.of("Swordfish"), Set.of("* Item"), Sets.newHashSet("Named Item"), false),
+			Arguments.of(ItemFilterType.WHITELIST, Set.of("Swordfish"), Set.of("* Item"), Sets.newHashSet("Named Item", "Lobster"), true),
+			// both matches
+			Arguments.of(ItemFilterType.WHITELIST, Set.of("Swordfish"), Set.of("Item *"), Sets.newHashSet("Item name", "Swordfish"), false),
+			Arguments.of(ItemFilterType.WHITELIST, Set.of("Swordfish"), Set.of("Item *"), Sets.newHashSet("Item name", "Swordfish", "Lobster"), true),
+			Arguments.of(ItemFilterType.WHITELIST, Set.of("Swordfish"), Set.of("* Item"), Sets.newHashSet("Named Item", "Swordfish"), false),
+			Arguments.of(ItemFilterType.WHITELIST, Set.of("Swordfish"), Set.of("* Item"), Sets.newHashSet("Named Item", "Swordfish", "Lobster"), true),
+			// neither matches
+			Arguments.of(ItemFilterType.WHITELIST, Set.of("Swordfish"), Set.of("Item *"), Sets.newHashSet("Lobster"), true),
+			Arguments.of(ItemFilterType.WHITELIST, Set.of("Swordfish"), Set.of("* Item"), Sets.newHashSet("Lobster"), true),
+			Arguments.of(ItemFilterType.WHITELIST, Set.of("Swordfish"), Set.of("Item *"), EMPTY, false),
+
+			// Combination of Wildcards and non wildcards - BLACKLIST
+			// non-wildcard matches
+			Arguments.of(ItemFilterType.BLACKLIST, Set.of("Swordfish"), Set.of("Item *"), Sets.newHashSet("Swordfish"), true),
+			Arguments.of(ItemFilterType.BLACKLIST, Set.of("Swordfish"), Set.of("Item *"), Sets.newHashSet("Swordfish", "Lobster"), true),
+			// wildcard matches
+			Arguments.of(ItemFilterType.BLACKLIST, Set.of("Swordfish"), Set.of("Item *"), Sets.newHashSet("Item name"), true),
+			Arguments.of(ItemFilterType.BLACKLIST, Set.of("Swordfish"), Set.of("Item *"), Sets.newHashSet("Item Name", "Lobster"), true),
+			Arguments.of(ItemFilterType.BLACKLIST, Set.of("Swordfish"), Set.of("* Item"), Sets.newHashSet("Named Item"), true),
+			Arguments.of(ItemFilterType.BLACKLIST, Set.of("Swordfish"), Set.of("* Item"), Sets.newHashSet("Named Item", "Lobster"), true),
+			// both matches
+			Arguments.of(ItemFilterType.BLACKLIST, Set.of("Swordfish"), Set.of("Item *"), Sets.newHashSet("Item name", "Swordfish"), true),
+			Arguments.of(ItemFilterType.BLACKLIST, Set.of("Swordfish"), Set.of("Item *"), Sets.newHashSet("Item name", "Swordfish", "Lobster"), true),
+			Arguments.of(ItemFilterType.BLACKLIST, Set.of("Swordfish"), Set.of("* Item"), Sets.newHashSet("Named Item", "Swordfish"), true),
+			Arguments.of(ItemFilterType.BLACKLIST, Set.of("Swordfish"), Set.of("* Item"), Sets.newHashSet("Named Item", "Swordfish", "Lobster"), true),
+			// neither matches
+			Arguments.of(ItemFilterType.BLACKLIST, Set.of("Swordfish"), Set.of("Item *"), Sets.newHashSet("Lobster"), false),
+			Arguments.of(ItemFilterType.BLACKLIST, Set.of("Swordfish"), Set.of("* Item"), Sets.newHashSet("Lobster"), false),
+			Arguments.of(ItemFilterType.BLACKLIST, Set.of("Swordfish"), Set.of("Item *"), EMPTY, false)
 		);
 	}
 
