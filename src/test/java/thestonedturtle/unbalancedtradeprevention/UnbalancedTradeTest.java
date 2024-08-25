@@ -97,7 +97,11 @@ public class UnbalancedTradeTest
 			Arguments.of("0 coins", "100,000 coins", -100_000),
 			Arguments.of("0 coins", "100,000,000 coins", -100_000_000),
 			Arguments.of("0 coins", "1,000,000,000 coins", -1_000_000_000),
-			Arguments.of("100,000 coins", "200,000 coins", -100_000)
+			Arguments.of("100,000 coins", "200,000 coins", -100_000),
+			// parseException when trying to convert string to number
+			Arguments.of(", coins", "0 coins", Integer.MAX_VALUE),
+			Arguments.of("0 coins", ", coins", Integer.MAX_VALUE),
+			Arguments.of(", coins", ", coins", Integer.MAX_VALUE)
 		);
 	}
 
