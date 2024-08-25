@@ -24,32 +24,35 @@
  */
 package thestonedturtle.unbalancedtradeprevention;
 
+import com.google.common.collect.Sets;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.stream.Stream;
-import net.runelite.api.Client;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import static org.mockito.Mockito.doReturn;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 import static thestonedturtle.unbalancedtradeprevention.UnbalancedTradePreventionPlugin.TRADE_WINDOW_OPPONENT_VALUE_TEXT_CHILD_ID;
 import static thestonedturtle.unbalancedtradeprevention.UnbalancedTradePreventionPlugin.TRADE_WINDOW_SECOND_SCREEN_INTERFACE_ID;
 import static thestonedturtle.unbalancedtradeprevention.UnbalancedTradePreventionPlugin.TRADE_WINDOW_SELF_VALUE_TEXT_CHILD_ID;
 
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 public class UnbalancedTradeTest
 {
-
-	@Mock
-	Client client;
-
 	@Mock
 	UnbalancedTradePreventionConfig config;
 
 	@Spy
+	@InjectMocks
 	UnbalancedTradePreventionPlugin plugin;
 
 	@ParameterizedTest
@@ -64,7 +67,6 @@ public class UnbalancedTradeTest
 		int delta = plugin.getTradeWindowDelta();
 		assertEquals(expectedDelta, delta);
 	}
-
 
 	private static Stream<Arguments> providerForTradeWindowDelta()
 	{
@@ -95,6 +97,55 @@ public class UnbalancedTradeTest
 			Arguments.of("0 coins", "100,000,000 coins", -100_000_000),
 			Arguments.of("0 coins", "1,000,000,000 coins", -1_000_000_000),
 			Arguments.of("100,000 coins", "200,000 coins", -100_000)
+		);
+	}
+
+	@ParameterizedTest
+	@MethodSource("providerForItemFilters")
+	void testUnbalancedTradeByItemFilters(ItemFilterType itemFilterType, Set<String> filterNames, Set<String> wildcardNames, Set<String> opponentItems, boolean expectedBoolean)
+	{
+		doReturn(itemFilterType).when(config).filterType();
+
+		// Since we mutate the opponentItems we need recreate the set
+		doReturn(opponentItems).when(plugin).getOpponentItemNames();
+		doReturn(filterNames).when(plugin).getFilterItemNames();
+		doReturn(wildcardNames).when(plugin).getFilterWildcardNames();
+
+		boolean isUnbalanced = plugin.unbalancedTradeByItemFilters();
+		assertEquals(expectedBoolean, isUnbalanced);
+	}
+
+	public static Stream<Arguments> providerForItemFilters()
+	{
+		final Set<String> EMPTY = new HashSet<>();
+		// Only the opponentItems set needs to be mutable, so use Sets.newHashSet instead
+		return Stream.of(
+			// TODO: Add wildcard tests
+			// If the item filter is off then it should always return false
+			Arguments.of(ItemFilterType.OFF, EMPTY, EMPTY, EMPTY, false),
+			Arguments.of(ItemFilterType.OFF, Set.of("ITEM NAME"), EMPTY, EMPTY, false),
+			Arguments.of(ItemFilterType.OFF, EMPTY, EMPTY, Set.of("ITEM NAME"), false),
+			Arguments.of(ItemFilterType.OFF, Set.of("ITEM NAME"), EMPTY, Sets.newHashSet("ITEM NAME"), false),
+			Arguments.of(ItemFilterType.OFF, Set.of("ITEM NAME"), EMPTY, Sets.newHashSet("ITEM NAME"), false),
+			// WHITELIST - unbalanced if there's any item in the opponents trade that IS NOT specified in one of our lists
+			Arguments.of(ItemFilterType.WHITELIST, EMPTY, EMPTY, EMPTY, false),
+			Arguments.of(ItemFilterType.WHITELIST, Set.of("ITEM NAME"), EMPTY, EMPTY, false),
+			Arguments.of(ItemFilterType.WHITELIST, EMPTY, EMPTY, Sets.newHashSet("ITEM NAME"), true),
+			Arguments.of(ItemFilterType.WHITELIST, Set.of("ITEM NAME"), EMPTY, Sets.newHashSet("ITEM NAME"), false),
+			Arguments.of(ItemFilterType.WHITELIST, Set.of("ITEM NAME", "OTHER ITEM"), EMPTY, Sets.newHashSet("ITEM NAME"), false),
+			// BLACKLIST - unbalanced if there's any item in the opponents trade that IS specified in one of our lists
+			Arguments.of(ItemFilterType.BLACKLIST, EMPTY, EMPTY, EMPTY, false),
+			Arguments.of(ItemFilterType.BLACKLIST, Set.of("ITEM NAME"), EMPTY, EMPTY, false),
+			Arguments.of(ItemFilterType.BLACKLIST, EMPTY, EMPTY, Sets.newHashSet("ITEM NAME"), false),
+			Arguments.of(ItemFilterType.BLACKLIST, Set.of("ITEM NAME"), EMPTY, Sets.newHashSet("ITEM NAME"), true),
+			Arguments.of(ItemFilterType.BLACKLIST, Set.of("OTHER ITEM"), EMPTY, Sets.newHashSet("ITEM NAME"), false),
+			// Coins and Platinum Tokens should always be allowed regardless of the settings
+			Arguments.of(ItemFilterType.OFF, EMPTY, EMPTY, Sets.newHashSet("Coins", "Platinum token"), false),
+			Arguments.of(ItemFilterType.WHITELIST, EMPTY, EMPTY, Sets.newHashSet("Coins", "Platinum token"), false),
+			Arguments.of(ItemFilterType.BLACKLIST, EMPTY, EMPTY, Sets.newHashSet("Coins", "Platinum token"), false),
+			// Even if the blacklist contains them they should still be allowed
+			Arguments.of(ItemFilterType.BLACKLIST, Set.of("Coins"), EMPTY, Sets.newHashSet("Coins", "Platinum token"), false),
+			Arguments.of(ItemFilterType.BLACKLIST, Set.of("Platinum token"), EMPTY, Sets.newHashSet("Coins", "Platinum token"), false)
 		);
 	}
 

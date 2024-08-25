@@ -39,6 +39,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import javax.inject.Inject;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
@@ -84,8 +85,9 @@ public class UnbalancedTradePreventionPlugin extends Plugin
 	@Inject
 	private ClientThread clientThread;
 
+	@VisibleForTesting
 	@Inject
-	private UnbalancedTradePreventionConfig config;
+	UnbalancedTradePreventionConfig config;
 
 	@Provides
 	UnbalancedTradePreventionConfig provideConfig(ConfigManager configManager)
@@ -94,7 +96,9 @@ public class UnbalancedTradePreventionPlugin extends Plugin
 	}
 
 	private boolean unbalancedTradeDetected = false;
+	@Getter
 	private final Set<String> filterItemNames = new HashSet<>();
+	@Getter
 	private final Collection<String> filterWildcardNames = new ArrayList<>();
 
 	@Override
@@ -179,7 +183,8 @@ public class UnbalancedTradePreventionPlugin extends Plugin
 		return selfValue - opponentValue;
 	}
 
-	private Set<String> getOpponentItemNames()
+	@VisibleForTesting
+	Set<String> getOpponentItemNames()
 	{
 		final Widget opponentItemContainer = client.getWidget(TRADE_WINDOW_SECOND_SCREEN_INTERFACE_ID, TRADE_WINDOW_OPPONENT_ITEMS_CHILD_ID);
 		if (opponentItemContainer == null)
@@ -208,27 +213,42 @@ public class UnbalancedTradePreventionPlugin extends Plugin
 			return;
 		}
 
+		if (unbalancedTradeByItemFilters())
+		{
+			unbalancedTradeDetected = true;
+			sendChatMessage(true);
+			return;
+		}
+
+		int delta = getTradeWindowDelta();
+		unbalancedTradeDetected = delta >= config.valueThreshold();
+		if (unbalancedTradeDetected)
+		{
+			sendChatMessage(false);
+		}
+	}
+
+	@VisibleForTesting
+	boolean unbalancedTradeByItemFilters()
+	{
 		if (!ItemFilterType.OFF.equals(config.filterType()))
 		{
 			final Set<String> itemNames = getOpponentItemNames();
-			// If there was some issue getting their items return false;
+			// If there was some issue getting their items the trade should be unbalanced
 			if (itemNames == null)
 			{
-				unbalancedTradeDetected = true;
-				sendChatMessage(false);
-				return;
+				return true;
 			}
 
+			final Set<String> currentFilterItemNames = getFilterItemNames();
 			final Collection<String> matchingNames = itemNames.stream()
-				.filter(filterItemNames::contains)
+				.filter(currentFilterItemNames::contains)
 				.collect(Collectors.toList());
 
 			final boolean isBlacklist = ItemFilterType.BLACKLIST.equals(config.filterType());
 			if (isBlacklist && !matchingNames.isEmpty())
 			{
-				unbalancedTradeDetected = true;
-				sendChatMessage(true);
-				return;
+				return true;
 			}
 
 			// If we're whitelisting we may have matched some directly but not all
@@ -236,7 +256,7 @@ public class UnbalancedTradePreventionPlugin extends Plugin
 			matchingNames.forEach(itemNames::remove);
 
 			// Check each wildcard filter
-			for (final String wildcard : filterWildcardNames)
+			for (final String wildcard : getFilterWildcardNames())
 			{
 				final String[] split = wildcard.split("\\*");
 				final boolean startsWithWildcard = wildcard.startsWith("*");
@@ -264,9 +284,7 @@ public class UnbalancedTradePreventionPlugin extends Plugin
 				// If it matches and we're blacklisting return early
 				if (isBlacklist && !wildcardMatchingNames.isEmpty())
 				{
-					unbalancedTradeDetected = true;
-					sendChatMessage(true);
-					return;
+					return true;
 				}
 
 				wildcardMatchingNames.forEach(itemNames::remove);
@@ -277,21 +295,11 @@ public class UnbalancedTradePreventionPlugin extends Plugin
 			}
 
 
-			// If we weren't able to match any name and we're whitelisting
-			if (!isBlacklist && !itemNames.isEmpty())
-			{
-				unbalancedTradeDetected = true;
-				sendChatMessage(true);
-				return;
-			}
+			// If we weren't able to match all the names and we're whitelisting
+			return !isBlacklist && !itemNames.isEmpty();
 		}
 
-		int delta = getTradeWindowDelta();
-		unbalancedTradeDetected = delta >= config.valueThreshold();
-		if (unbalancedTradeDetected)
-		{
-			sendChatMessage(false);
-		}
+		return false;
 	}
 
 	private void sendChatMessage(boolean byFilter)
