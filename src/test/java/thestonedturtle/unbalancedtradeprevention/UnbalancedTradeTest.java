@@ -27,6 +27,7 @@ package thestonedturtle.unbalancedtradeprevention;
 import com.google.common.collect.Sets;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -107,9 +108,9 @@ public class UnbalancedTradeTest
 		doReturn(itemFilterType).when(config).filterType();
 
 		// Since we mutate the opponentItems we need recreate the set
-		doReturn(opponentItems).when(plugin).getOpponentItemNames();
-		doReturn(filterNames).when(plugin).getFilterItemNames();
-		doReturn(wildcardNames).when(plugin).getFilterWildcardNames();
+		doReturn(lowercaseAllSetValues(opponentItems)).when(plugin).getOpponentItemNames();
+		doReturn(lowercaseAllSetValues(filterNames)).when(plugin).getFilterItemNames();
+		doReturn(lowercaseAllSetValues(wildcardNames)).when(plugin).getFilterWildcardNames();
 
 		boolean isUnbalanced = plugin.unbalancedTradeByItemFilters();
 		assertEquals(expectedBoolean, isUnbalanced);
@@ -157,5 +158,15 @@ public class UnbalancedTradeTest
 	private static String createOpponentValueTextPattern(String s)
 	{
 		return s == null ? null : String.format("In return you will receive:(Value: %s)", s);
+	}
+
+	private static Set<String> lowercaseAllSetValues(Set<String> set)
+	{
+		if (set == null)
+		{
+			return null;
+		}
+
+		return set.stream().map(String::toLowerCase).collect(Collectors.toSet());
 	}
 }
