@@ -423,6 +423,6 @@ public class UnbalancedTradePreventionPlugin extends Plugin
 		entries[index1] = entry2;
 		entries[index2] = entry1;
 
-		client.setMenuEntries(entries);
+		client.getMenu().setMenuEntries(entries);
 	}
 }
