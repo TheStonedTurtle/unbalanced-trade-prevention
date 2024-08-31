@@ -19,6 +19,7 @@ options.
 | [Trade Value Threshold](#trade-value-threshold) | 100,000       |
 | [Item Filter Method](#item-filter-method)       | Whitelist     | 
 | [Item List](#item-list)                         | N/A           |
+| [Whitelisted Friends](#whitelisted-friends)     | N/A           |
 
 ### Trade Value Threshold
 
@@ -72,3 +73,17 @@ Mith *
 This would match `Mith Grapple` but would not match `Mithril bar` as there's a space between `Mith` and `*`. If you
 remove the space it would match against both.
 
+### Whitelisted Friends
+
+Do you want to use this plugin, but you're a speedrunner who shares their imbued heart with teammates? Are there some
+people that you always want to trust and the ability to quickly accept their trade is very important?
+Whatever the case may be this config option will allow you to use this plugin while allowing specific individuals to
+bypass the trade detection entirely.
+
+**If the person you are trading is in this list then the plugin will completely ignore that trade, as if the plugin was
+not even installed.**
+
+A right-click option is added to each friend in your friends list to easily add/remove them from this list.
+
+**NOTE:** This does not track name changes, if your friend changes their name you will need to readd them to this list.
+Their old name will remain in the list unless you manually remove it.
