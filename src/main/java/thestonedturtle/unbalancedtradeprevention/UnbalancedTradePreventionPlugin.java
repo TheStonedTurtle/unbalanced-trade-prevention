@@ -243,6 +243,12 @@ public class UnbalancedTradePreventionPlugin extends Plugin
 			// Coins and Platinum tokens are always acceptable, so just assume they aren't in the opponents list
 			itemNames.remove("coins");
 			itemNames.remove("platinum token");
+			itemNames.remove("absolutely nothing!");
+
+			if (itemNames.isEmpty())
+			{
+				return false;
+			}
 
 			final Set<String> currentFilterItemNames = getFilterItemNames();
 			final Collection<String> matchingNames = itemNames.stream()
