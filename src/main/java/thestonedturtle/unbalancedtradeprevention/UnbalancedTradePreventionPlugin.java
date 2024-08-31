@@ -44,11 +44,15 @@ import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
+import net.runelite.api.MenuAction;
 import net.runelite.api.MenuEntry;
+import net.runelite.api.events.MenuEntryAdded;
 import net.runelite.api.events.PostMenuSort;
 import net.runelite.api.events.WidgetClosed;
 import net.runelite.api.events.WidgetLoaded;
+import net.runelite.api.widgets.InterfaceID;
 import net.runelite.api.widgets.Widget;
+import net.runelite.api.widgets.WidgetUtil;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
@@ -70,6 +74,7 @@ public class UnbalancedTradePreventionPlugin extends Plugin
 	static final int TRADE_WINDOW_SELF_VALUE_TEXT_CHILD_ID = 23;
 	@VisibleForTesting
 	static final int TRADE_WINDOW_OPPONENT_VALUE_TEXT_CHILD_ID = 24;
+	private static final int TRADE_WINDOW_OPPONENT_NAME_CHILD_ID = 30;
 
 	private static final Pattern SELF_VALUE_PATTERN = Pattern.compile("You are about to give:\\(Value: ([\\d,]* coins|Lots!)\\)");
 	private static final Pattern OPPONENT_VALUE_PATTERN = Pattern.compile("In return you will receive:\\(Value: ([\\d,]* coins|Lots!)\\)");
@@ -78,6 +83,10 @@ public class UnbalancedTradePreventionPlugin extends Plugin
 	private static final String UNBALANCED_TRADE_CHAT_MESSAGE = "<col=ff0000>Unbalanced trade detected! The accept trade option has been set to right-click only.</col>";
 	private static final String WHITELISTED_TRADE_CHAT_MESSAGE = "<col=ff0000>A non-whitelisted item was found in the opponents trade window</col>";
 	private static final String BLACKLISTED_TRADE_CHAT_MESSAGE = "<col=ff0000>A blacklisted item was found in the opponents trade window</col>";
+	private static final String FRIEND_WHITELISTED_MESSAGE = "<col=009900>You're trading a whitelisted friend, unbalanced trade detection is disabled</col>";
+
+	private static final String ADD_FRIEND_WHITELIST = "Whitelist";
+	private static final String REMOVE_FRIEND_WHITELIST = "Revoke Whitelist";
 
 	@Inject
 	private Client client;
@@ -100,6 +109,8 @@ public class UnbalancedTradePreventionPlugin extends Plugin
 	private final Set<String> filterItemNames = new HashSet<>();
 	@Getter
 	private final Collection<String> filterWildcardNames = new ArrayList<>();
+	@Getter
+	private final Set<String> friends = new HashSet<>();
 
 	@Override
 	protected void startUp()
@@ -211,10 +222,31 @@ public class UnbalancedTradePreventionPlugin extends Plugin
 		return set;
 	}
 
+	private String getTradePartnersName()
+	{
+		final String text = getTextByWidget(TRADE_WINDOW_SECOND_SCREEN_INTERFACE_ID, TRADE_WINDOW_OPPONENT_NAME_CHILD_ID);
+		if (text == null)
+		{
+			return null;
+		}
+
+		return Text.removeTags(text).replace("Trading with:", "").toLowerCase().trim();
+	}
+
 	private void checkTradeWindow()
 	{
 		if (client.getWidget(TRADE_WINDOW_SECOND_SCREEN_INTERFACE_ID, TRADE_WINDOW_SELF_VALUE_TEXT_CHILD_ID) == null)
 		{
+			unbalancedTradeDetected = false; // Ensure it's false if the widget can't be found
+			return;
+		}
+
+		// Friends are always allowed to trade us
+		final String opponentName = getTradePartnersName();
+		if (getFriends().contains(opponentName))
+		{
+			sendChatMessage(FRIEND_WHITELISTED_MESSAGE);
+			unbalancedTradeDetected = false; // Reset to false in case they whitelisted during a trade
 			return;
 		}
 
@@ -387,6 +419,11 @@ public class UnbalancedTradePreventionPlugin extends Plugin
 
 		filterItemNames.addAll(items.get(false));
 		filterWildcardNames.addAll(items.get(true));
+
+		friends.clear();
+		friends.addAll(Arrays.stream(config.friendsList().split(","))
+			.map(s -> s.trim().toLowerCase())
+			.collect(Collectors.toList()));
 	}
 
 	@Subscribe
@@ -413,6 +450,42 @@ public class UnbalancedTradePreventionPlugin extends Plugin
 				break;
 			}
 		}
+	}
+
+
+	@Subscribe
+	public void onMenuEntryAdded(MenuEntryAdded event)
+	{
+		final int groupId = WidgetUtil.componentToInterface(event.getActionParam1());
+
+		if (!(groupId == InterfaceID.FRIEND_LIST && event.getOption().equals("Message")))
+		{
+			return;
+		}
+
+		final String friend = Text.toJagexName(Text.removeTags(event.getTarget()));
+
+		client.getMenu().createMenuEntry(-2)
+			.setOption(friends.contains(friend.toLowerCase()) ? REMOVE_FRIEND_WHITELIST : ADD_FRIEND_WHITELIST)
+			.setType(MenuAction.RUNELITE)
+			.setTarget(event.getTarget())
+			.onClick(e ->
+			{
+				final String sanitizedFriend = Text.toJagexName(Text.removeTags(event.getTarget()));
+
+				// Remove friend from list
+				if (friends.contains(sanitizedFriend.toLowerCase()))
+				{
+					List<String> friends = Arrays.stream(config.friendsList().split(","))
+						.filter(s -> !s.isEmpty() && !s.equalsIgnoreCase(sanitizedFriend))
+						.collect(Collectors.toList());
+					config.setFriendsList(String.join(",", friends));
+					return;
+				}
+
+				// Add friend to list
+				config.setFriendsList(config.friendsList().isEmpty() ? sanitizedFriend : String.format("%s,%s", config.friendsList(), sanitizedFriend));
+			});
 	}
 
 	private void simpleSwap(MenuEntry[] entries, int index1, int index2)

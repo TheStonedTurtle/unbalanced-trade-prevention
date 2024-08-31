@@ -62,9 +62,9 @@ public interface UnbalancedTradePreventionConfig extends Config
 	@ConfigItem(
 		keyName = "itemList",
 		name = "Item List",
-		description = "<html>The list of items that are used for the `Item Filter Method` config option.<br/>" +
+		description = "<html>The list of items that are used for the `Item Filter Method` config option<br/>" +
 			"<br/>Format: (item),(item)" +
-			"<br/>Supports wildcards: (item*)/(*item) only, (it*em) does not work." +
+			"<br/>Supports wildcards: (item*)/(*item) only, (it*em) does not work" +
 			"</html>",
 		position = 2
 	)
@@ -72,4 +72,25 @@ public interface UnbalancedTradePreventionConfig extends Config
 	{
 		return "";
 	}
+
+	@ConfigItem(
+		keyName = "friendsList",
+		name = "Whitelisted Friends",
+		description = "<html>The list of usernames that will be ignored for this plugin, allowing you to always trade them even if the trade would otherwise be unbalanced<br/>" +
+			"<br/>A right-click option has been added to each friend in your friends list to easily add or remove them from this list" +
+			"<br/>Format: (username),(username)" +
+			"</html>",
+		position = 3
+	)
+	default String friendsList()
+	{
+		return "";
+	}
+
+	@ConfigItem(
+		keyName = "friendsList",
+		name = "",
+		description = ""
+	)
+	void setFriendsList(String key);
 }
