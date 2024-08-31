@@ -60,6 +60,7 @@ import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.util.Text;
+import net.runelite.client.util.WildcardMatcher;
 
 @Slf4j
 @PluginDescriptor(
@@ -305,27 +306,8 @@ public class UnbalancedTradePreventionPlugin extends Plugin
 			// Check each wildcard filter
 			for (final String wildcard : getFilterWildcardNames())
 			{
-				final String[] split = wildcard.split("\\*");
-				final boolean startsWithWildcard = wildcard.startsWith("*");
-				final String searchTerm;
-				// If it starts with the wildcard we're looking for strings that end with this value
-				if (startsWithWildcard && split.length > 1)
-				{
-					// Do not trim the actual search term as we may want to match stuff with a leading space
-					searchTerm = split[1];
-				}
-				else
-				{
-					searchTerm = split[0];
-				}
-
-				if (searchTerm.trim().isEmpty())
-				{
-					continue;
-				}
-
 				final Collection<String> wildcardMatchingNames = itemNames.stream()
-					.filter(s -> startsWithWildcard ? s.endsWith(searchTerm) : s.startsWith(searchTerm))
+					.filter(s -> WildcardMatcher.matches(wildcard, s))
 					.collect(Collectors.toList());
 
 				// If it matches and we're blacklisting return early
