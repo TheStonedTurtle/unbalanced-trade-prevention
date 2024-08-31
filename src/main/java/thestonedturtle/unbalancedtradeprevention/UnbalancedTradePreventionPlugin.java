@@ -104,6 +104,8 @@ public class UnbalancedTradePreventionPlugin extends Plugin
 	@Override
 	protected void startUp()
 	{
+		updateFilters();
+
 		if (!client.getGameState().equals(GameState.LOGGED_IN))
 		{
 			return;
@@ -116,6 +118,9 @@ public class UnbalancedTradePreventionPlugin extends Plugin
 	protected void shutDown()
 	{
 		unbalancedTradeDetected = false;
+		filterItemNames.clear();
+		filterWildcardNames.clear();
+		friends.clear();
 	}
 
 	private int parseStringForValue(String text, Pattern p)

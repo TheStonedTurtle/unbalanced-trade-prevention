@@ -63,7 +63,7 @@ public interface UnbalancedTradePreventionConfig extends Config
 		keyName = "itemList",
 		name = "Item List",
 		description = "<html>The list of items that are used for the `Item Filter Method` config option.<br/>" +
-			"<br/>Format: (item), (item)" +
+			"<br/>Format: (item),(item)" +
 			"<br/>Supports wildcards: (item*)/(*item) only, (it*em) does not work." +
 			"</html>",
 		position = 2
