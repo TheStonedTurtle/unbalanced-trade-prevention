@@ -393,7 +393,7 @@ public class UnbalancedTradePreventionPlugin extends Plugin
 			return;
 		}
 
-		MenuEntry[] menuEntries = client.getMenuEntries();
+		MenuEntry[] menuEntries = client.getMenu().getMenuEntries();
 		for (int i = 0; i < menuEntries.length; i++)
 		{
 			MenuEntry entry = menuEntries[i];
