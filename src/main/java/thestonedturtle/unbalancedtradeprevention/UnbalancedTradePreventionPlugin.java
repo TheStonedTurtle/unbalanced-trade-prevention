@@ -172,6 +172,18 @@ public class UnbalancedTradePreventionPlugin extends Plugin
 		return w.getText();
 	}
 
+	public int getTradeWindowDeltaFromChildWidget(int childId, Pattern pattern)
+	{
+		String selfValueText = getTextByWidget(TRADE_WINDOW_SECOND_SCREEN_INTERFACE_ID, childId);
+
+		if (selfValueText == null)
+		{
+			return -1;
+		}
+
+		return parseStringForValue(selfValueText, pattern);
+	}
+
 	/**
 	 * Calculates the difference between your trade value and your opponents trade value
 	 *
@@ -180,15 +192,8 @@ public class UnbalancedTradePreventionPlugin extends Plugin
 	@VisibleForTesting
 	int getTradeWindowDelta()
 	{
-		String selfValueText = getTextByWidget(TRADE_WINDOW_SECOND_SCREEN_INTERFACE_ID, TRADE_WINDOW_SELF_VALUE_TEXT_CHILD_ID);
-		String opponentValueText = getTextByWidget(TRADE_WINDOW_SECOND_SCREEN_INTERFACE_ID, TRADE_WINDOW_OPPONENT_VALUE_TEXT_CHILD_ID);
-		if (selfValueText == null || opponentValueText == null)
-		{
-			return Integer.MAX_VALUE;
-		}
-
-		int selfValue = parseStringForValue(selfValueText, SELF_VALUE_PATTERN);
-		int opponentValue = parseStringForValue(opponentValueText, OPPONENT_VALUE_PATTERN);
+		int selfValue = getTradeWindowDeltaFromChildWidget(TRADE_WINDOW_SELF_VALUE_TEXT_CHILD_ID, SELF_VALUE_PATTERN);
+		int opponentValue = getTradeWindowDeltaFromChildWidget(TRADE_WINDOW_OPPONENT_VALUE_TEXT_CHILD_ID, OPPONENT_VALUE_PATTERN);
 
 		// If there was an error getting our own value, or it equals "Lots!" (or max cash), assume the trade is in their favor
 		// If there was an error getting the opponents value also assume it's in their favor
@@ -239,6 +244,13 @@ public class UnbalancedTradePreventionPlugin extends Plugin
 		if (client.getWidget(TRADE_WINDOW_SECOND_SCREEN_INTERFACE_ID, TRADE_WINDOW_SELF_VALUE_TEXT_CHILD_ID) == null)
 		{
 			unbalancedTradeDetected = false; // Ensure it's false if the widget can't be found
+			return;
+		}
+
+		// A trade where you're not giving anything away should always be balanced
+		final int selfValue = getTradeWindowDeltaFromChildWidget(TRADE_WINDOW_SELF_VALUE_TEXT_CHILD_ID, SELF_VALUE_PATTERN);
+		if (selfValue == 0)
+		{
 			return;
 		}
 
